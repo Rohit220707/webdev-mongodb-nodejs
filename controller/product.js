@@ -1,0 +1,78 @@
+const express = require("express");
+const router = express.Router();
+const productModel = require("../model/product_model");
+const authenticationMiddleware = require("../middleware/auth");
+
+router.get("/product", async (req, res) => {
+  const { inStock, maxprice, sortPrice, sortName } = req.query;
+
+  try {
+    const filter = {};
+    const sort = {};
+    if (maxprice) {
+         filter.price = { $lte: maxprice}
+    }
+    if (sortPrice) {
+      sort.price = 1
+    }
+    if (sortName) {
+      sort.name = 1
+    }
+    if (!inStock) {
+      filter.inStock = true;
+    }
+    console.log("Filter", filter);
+    console.log("sort", sort);
+
+    const response = await productModel.find(filter).sort(sort);
+    res.status(200).json(response);
+  } catch (err) {
+    res.status(401).json({ error: err });
+  }
+});
+
+router.post("/product", authenticationMiddleware, async (req, res) => {
+  console.log("BODY:", req.body);
+
+  try {
+    const newProduct = new productModel(req.body);
+    const response = await newProduct.save();
+    res
+      .status(201)
+      .json({ message: "Product created successfully", data: response });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.get("/product/:id", async (req, res) => {
+  try {
+    const response = await productModel.find({ id: req.params.id });
+    res.status(200).json(response);
+  } catch (err) {
+    res.status(401).json({ error: err });
+  }
+});
+
+router.patch("/product/:id",authenticationMiddleware, async (req, res) => {
+  try {
+    const response = await productModel.updateOne(
+      { id: req.params.id },
+      { $set: req.body }
+    );
+    res.status(200).json({ message: "Product is updated", response });
+  } catch (err) {
+    res.status(401).json({ error: err });
+  }
+});
+
+router.delete("/product/:id",authenticationMiddleware, async (req, res) => {
+  try {
+    const response = await productModel.deleteOne({ id: req.params.id });
+    res.status(200).json({ message: "Product is deleted", response });
+  } catch (err) {
+    res.status(401).json({ error: err });
+  }
+});
+
+module.exports = router;
